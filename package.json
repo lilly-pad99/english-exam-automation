@@ -1,4 +1,4 @@
- {
+{
   "name": "english-exam-automation",
   "version": "1.0.0",
   "description": "Daily English exam generator with Slack integration",
