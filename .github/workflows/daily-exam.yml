@@ -1,1 +1,86 @@
- 
+name: Daily English Exam Generator
+
+on:
+  schedule:
+    # 매일 오전 9시 (UTC 기준 0시, 한국시간 9시)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 수동 실행 가능
+    inputs:
+      test_mode:
+        description: 'Test mode (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  generate-and-send-exam:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: |
+        npm install
+        echo "✅ Dependencies installed"
+        
+    - name: 📊 Check vocabs.xlsx file
+      run: |
+        if [ -f "data/vocabs.xlsx" ]; then
+          echo "✅ vocabs.xlsx file found"
+          ls -la data/vocabs.xlsx
+        else
+          echo "❌ vocabs.xlsx file not found"
+          echo "Creating data directory..."
+          mkdir -p data
+          echo "Please upload vocabs.xlsx to data/ directory"
+          exit 1
+        fi
+        
+    - name: 🏗️ Generate exam files
+      run: |
+        echo "📝 Generating exam files..."
+        npm run generate-exam
+        echo "✅ Exam files generated"
+        
+    - name: 📤 Send to Slack
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+      run: |
+        echo "📤 Sending files to Slack..."
+        npm run send-to-slack
+        echo "✅ Files sent to Slack"
+        
+    - name: 🧹 Clean up temporary files
+      run: |
+        echo "🧹 Cleaning up temporary files..."
+        rm -f exam_*.md
+        rm -f answers_*.md
+        echo "✅ Cleanup completed"
+        
+    - name: 📋 Job summary
+      run: |
+        echo "## 🎉 Daily Exam Generation Completed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Exam generated successfully" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Files sent to Slack channel" >> $GITHUB_STEP_SUMMARY
+        echo "- 📅 Date: $(date)" >> $GITHUB_STEP_SUMMARY
+
+  notify-on-failure:
+    runs-on: ubuntu-latest
+    needs: generate-and-send-exam
+    if: failure()
+    
+    steps:
+    - name: 🚨 Notify failure
+      uses: actions/github-script@v6
+      with:
+        script: |
+          console.log('❌ Daily exam generation failed');
+          console.log('Please check the workflow logs for details'); 
