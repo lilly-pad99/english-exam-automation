@@ -1,0 +1,10 @@
+requests
+selenium
+webdriver-manager
+beautifulsoup4
+slack_sdk
+slack_bolt
+gspread
+google-auth-oauthlib
+anthropic
+python-dotenv
